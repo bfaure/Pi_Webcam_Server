@@ -18,7 +18,7 @@ class connection_manager(object):
 class frame_manager(QThread): # handles updating the gui
 	update_gui = pyqtSignal()
 
-	def __init__(self,parent,refresh_after=0.1):
+	def __init__(self,parent,refresh_after=0.2):
 		QThread.__init__(self,parent)
 		self.refresh_after=refresh_after
 		self.stop=False
@@ -38,7 +38,7 @@ class main_window(QWidget):
 		self.init_ui()
 
 	def init_vars(self):
-		self.current_frame = None 
+		self.current_frame = QPixmap("resources/test_images/test.png")
 		self.connection = connection_manager(self)
 
 	def init_ui(self):
@@ -56,7 +56,7 @@ class main_window(QWidget):
 		toolbar.setFixedWidth(self.min_width)
 
 		file_menu = toolbar.addMenu("File")
-		file_menu.addAction("Test video",self.test_video)
+		#file_menu.addAction("Test video",self.test_video)
 		file_menu.addAction("Quit",self.quit,QKeySequence("Ctrl+Q"))
 
 		connection_menu = toolbar.addMenu("Connection")
@@ -64,9 +64,19 @@ class main_window(QWidget):
 		connection_menu.addAction("Disconnect",self.disconnect_from_server)
 
 		self.resize(self.min_width,self.min_height) # resize window
+		self.show()
 
 		self.fps_manager = frame_manager(self) # separate thread to handle updating window
 		self.fps_manager.start() # start manager thread
+
+	def paintEvent(self,e):
+		qp = QPainter()
+		qp.begin(self)
+		self.drawWidget(qp)
+		qp.end()
+
+	def drawWidget(self,qp):
+		self.main_image.setPixmap(self.current_frame)
 
 	def connect_to_server(self):
 		pass # not yet implemented
@@ -81,7 +91,6 @@ class main_window(QWidget):
 
 	def closeEvent(self,e): # catch signal when user tries to exit by clicking window button
 		self.quit() # re-route to our quit function
-
 
 
 def main():
