@@ -10,11 +10,6 @@ from PyQt4.QtGui import *
 # networking imports 
 from socket import * 
 
-class connection_manager(object):
-
-	def __init__(self,parent=None):
-		self.parent=parent 
-
 class frame_manager(QThread): # handles updating the gui
 	update_gui = pyqtSignal()
 
@@ -22,11 +17,20 @@ class frame_manager(QThread): # handles updating the gui
 		QThread.__init__(self,parent)
 		self.refresh_after=refresh_after
 		self.stop=False
+		self.test=True
 		self.connect(self,SIGNAL("update_gui()"),parent.repaint)
 
 	def run(self): # send update signal to gui window periodically
 		while True:
 			if self.stop: break 
+
+			
+			#if self.test:
+			
+			#	for items in os.listdir("resources/test_images/"):
+
+
+
 			self.update_gui.emit()
 			time.sleep(self.refresh_after)
 
@@ -39,7 +43,6 @@ class main_window(QWidget):
 
 	def init_vars(self):
 		self.current_frame = QPixmap("resources/test_images/test.png")
-		self.connection = connection_manager(self)
 
 	def init_ui(self):
 
@@ -47,9 +50,7 @@ class main_window(QWidget):
 		self.min_height=600
 
 		self.window_layout = QVBoxLayout(self) # control layout of widgets on window
-
 		self.main_image = QLabel() # will push image stream to this widget 
-
 		self.window_layout.addWidget(self.main_image) # add to layout
 
 		toolbar = QMenuBar(self) # top menu bar
