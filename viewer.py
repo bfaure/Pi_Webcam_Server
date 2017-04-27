@@ -1,7 +1,7 @@
 # Python 2.7
 
 # standard imports 
-import os,sys,time
+import os,sys,time,random
 
 # gui imports 
 from PyQt4.QtCore import * 
@@ -13,23 +13,21 @@ from socket import *
 class frame_manager(QThread): # handles updating the gui
 	update_gui = pyqtSignal()
 
-	def __init__(self,parent,refresh_after=0.2):
+	def __init__(self,parent,refresh_after=0.5):
 		QThread.__init__(self,parent)
+		self.parent=parent
 		self.refresh_after=refresh_after
 		self.stop=False
 		self.test=True
-		self.connect(self,SIGNAL("update_gui()"),parent.repaint)
+		self.connect(self,SIGNAL("update_gui()"),parent.update_frame)
 
 	def run(self): # send update signal to gui window periodically
 		while True:
 			if self.stop: break 
 
-			
-			#if self.test:
-			
-			#	for items in os.listdir("resources/test_images/"):
-
-
+			items = os.listdir("resources/test_images")
+			pic = random.choice(items)
+			self.parent.current_frame_file = "resources/test_images/"+pic
 
 			self.update_gui.emit()
 			time.sleep(self.refresh_after)
@@ -42,7 +40,8 @@ class main_window(QWidget):
 		self.init_ui()
 
 	def init_vars(self):
-		self.current_frame = QPixmap("resources/test_images/test.png")
+		self.current_frame_file = "resources/test_images/test.png"
+		self.current_frame = QPixmap(self.current_frame_file)
 
 	def init_ui(self):
 
@@ -70,13 +69,8 @@ class main_window(QWidget):
 		self.fps_manager = frame_manager(self) # separate thread to handle updating window
 		self.fps_manager.start() # start manager thread
 
-	def paintEvent(self,e):
-		qp = QPainter()
-		qp.begin(self)
-		self.drawWidget(qp)
-		qp.end()
-
-	def drawWidget(self,qp):
+	def update_frame(self):
+		self.current_frame = QPixmap(self.current_frame_file)
 		self.main_image.setPixmap(self.current_frame)
 
 	def connect_to_server(self):
