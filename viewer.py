@@ -62,9 +62,6 @@ class frame_manager(QThread): # handles updating the gui
 				self.update_gui.emit()
 			except:
 				num_transmission_errors+=1
-				continue
-			#while not self.image_ready:
-			#	time.sleep(0.1)
 			time.sleep(self.refresh_after)
 
 class main_window(QWidget): 
