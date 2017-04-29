@@ -10,25 +10,57 @@ from PyQt4.QtGui import *
 # networking imports 
 from socket import * 
 
+# tftp library
+import tftpy
+
+DEFAULT_PORT_NUM=15213
+
+'''
+class frame_client(QThread):
+	image_ready = pyqtSignal()
+
+	def __init__(self,parent,ip_address,port_number=DEFAULT_PORT_NUM):
+		self.parent=parent 
+		self.ip_addr=ip_address
+		self.port_num=port_number
+
+	def run(self):
+		client = tftpy.TftpClient('localhost',self.port_num)
+		client.download('')
+'''	
+
+
 class frame_manager(QThread): # handles updating the gui
 	update_gui = pyqtSignal()
 
-	def __init__(self,parent,refresh_after=0.5):
+	def __init__(self,parent,refresh_after=5):
 		QThread.__init__(self,parent)
 		self.parent=parent
 		self.refresh_after=refresh_after
+		self.ip_address=None 
+		self.port_num=DEFAULT_PORT_NUM
 		self.stop=False
-		self.test=True
+		self.pause=True 
 		self.connect(self,SIGNAL("update_gui()"),parent.update_frame)
 
 	def run(self): # send update signal to gui window periodically
 		while True:
-			if self.stop: break 
+			while self.pause:
+				time.sleep(0.01)
+			if self.stop: 
+				break 
 
-			items = os.listdir("resources/test_images")
-			pic = random.choice(items)
-			self.parent.current_frame_file = "resources/test_images/"+pic
+			#self.image_ready=False 
+			#self.frame_interface.request_image()
 
+			client = tftpy.TftpClient('localhost',self.port_num)
+			client.download('server_frame_buffer/frame.png','client_frame_buffer/frame.png')
+
+			#while not self.image_ready:
+			#	time.sleep(0.1)
+
+			image_file = "client_frame_buffer/frame.png"
+			self.parent.current_frame_file = image_file
 			self.update_gui.emit()
 			time.sleep(self.refresh_after)
 
@@ -40,8 +72,9 @@ class main_window(QWidget):
 		self.init_ui()
 
 	def init_vars(self):
-		self.current_frame_file = "resources/test_images/test.png"
-		self.current_frame = QPixmap(self.current_frame_file)
+		#self.current_frame_file = "resources/test_images/test.png"
+		self.current_frame_file=None 
+		#self.current_frame = QPixmap(self.current_frame_file)
 
 	def init_ui(self):
 
@@ -70,11 +103,15 @@ class main_window(QWidget):
 		self.fps_manager.start() # start manager thread
 
 	def update_frame(self):
+		if self.current_frame_file==None: return # skip if we dont have a frame
 		self.current_frame = QPixmap(self.current_frame_file)
 		self.main_image.setPixmap(self.current_frame)
 
 	def connect_to_server(self):
-		pass # not yet implemented
+		print("Connecting to server...")
+		self.fps_manager.ip_address="localhost"
+		self.fps_manager.port_num=DEFAULT_PORT_NUM
+		self.fps_manager.pause=False 
 
 	def disconnect_from_server(self):
 		pass # not yet implemented
