@@ -44,24 +44,27 @@ class frame_manager(QThread): # handles updating the gui
 		self.connect(self,SIGNAL("update_gui()"),parent.update_frame)
 
 	def run(self): # send update signal to gui window periodically
+		num_transmission_errors=0
 		while True:
 			while self.pause:
-				time.sleep(0.01)
+				time.sleep(0.1)
 			if self.stop: 
 				break 
 
 			#self.image_ready=False 
 			#self.frame_interface.request_image()
-
 			client = tftpy.TftpClient('localhost',self.port_num)
-			client.download('server_frame_buffer/frame.png','client_frame_buffer/frame.png')
-
+			try:
+				#client = tftpy.TftpClient('localhost',self.port_num)
+				client.download('server_frame_buffer/frame.png','client_frame_buffer/frame.png')
+				image_file = "client_frame_buffer/frame.png"
+				self.parent.current_frame_file = image_file
+				self.update_gui.emit()
+			except:
+				num_transmission_errors+=1
+				continue
 			#while not self.image_ready:
 			#	time.sleep(0.1)
-
-			image_file = "client_frame_buffer/frame.png"
-			self.parent.current_frame_file = image_file
-			self.update_gui.emit()
 			time.sleep(self.refresh_after)
 
 class main_window(QWidget): 
