@@ -46,7 +46,7 @@ ready to be read from their socket.
 #include <arpa/inet.h>
 #include <sys/select.h> // I/O multiplexing
 
-#define BLK_SIZE 1024
+#define BLK_SIZE 2000
 
 // simplifying function calls
 typedef struct sockaddr SA;
@@ -443,7 +443,8 @@ void resume_transfer(int t)
 
 int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* addrlen, char* enc_mode)
 {
-	int t,cli_sock = -1; // initialize variables
+	int t = -1;
+	int cli_sock = -1; // initialize variables
 
 	// create socket connection to client to be used for transfer 
 	cli_sock = socket(AF_INET,SOCK_DGRAM,0);
