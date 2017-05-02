@@ -15,20 +15,6 @@ import tftpy
 
 DEFAULT_PORT_NUM=15213
 
-'''
-class frame_client(QThread):
-	image_ready = pyqtSignal()
-
-	def __init__(self,parent,ip_address,port_number=DEFAULT_PORT_NUM):
-		self.parent=parent 
-		self.ip_addr=ip_address
-		self.port_num=port_number
-
-	def run(self):
-		client = tftpy.TftpClient('localhost',self.port_num)
-		client.download('')
-'''	
-
 class frame_manager(QThread): # handles updating the gui
 	update_gui = pyqtSignal()
 
@@ -36,7 +22,7 @@ class frame_manager(QThread): # handles updating the gui
 		QThread.__init__(self,parent)
 		self.parent=parent
 		self.refresh_after=refresh_after
-		self.ip_address=None 
+		self.ip_address="localhost" # default 
 		self.port_num=DEFAULT_PORT_NUM
 		self.stop=False
 		self.pause=True 
@@ -46,17 +32,14 @@ class frame_manager(QThread): # handles updating the gui
 		num_transmission_errors=0
 		while True:
 			while self.pause:
-				time.sleep(0.1)
+				time.sleep(0.5)
 			if self.stop: 
 				break 
 
-			#self.image_ready=False 
-			#self.frame_interface.request_image()
-			client = tftpy.TftpClient('localhost',self.port_num)
+			client = tftpy.TftpClient(self.ip_address,self.port_num)
 			try:
-				#client = tftpy.TftpClient('localhost',self.port_num)
-				client.download('server_frame_buffer/frame.png','client_frame_buffer/frame.png')
 				image_file = "client_frame_buffer/frame.png"
+				client.download('server_frame_buffer/frame.png',image_file)
 				self.parent.current_frame_file = image_file
 				self.update_gui.emit()
 			except:
@@ -141,7 +124,6 @@ class ip_window(QWidget):
 	def closeEvent(self,e):
 		self.cancel_selected()
 
-
 class main_window(QWidget): 
 
 	def __init__(self):
@@ -151,9 +133,7 @@ class main_window(QWidget):
 		self.init_ui()
 
 	def init_vars(self):
-		#self.current_frame_file = "resources/test_images/test.png"
 		self.current_frame_file=None 
-		#self.current_frame = QPixmap(self.current_frame_file)
 
 	def init_ui(self):
 
@@ -168,7 +148,6 @@ class main_window(QWidget):
 		toolbar.setFixedWidth(self.min_width)
 
 		file_menu = toolbar.addMenu("File")
-		#file_menu.addAction("Test video",self.test_video)
 		file_menu.addAction("Quit",self.quit,QKeySequence("Ctrl+Q"))
 
 		connection_menu = toolbar.addMenu("Connection")
@@ -183,6 +162,7 @@ class main_window(QWidget):
 
 	def update_frame(self):
 		if self.current_frame_file==None: return # skip if we dont have a frame
+		print("Loading new frame")
 		self.current_frame = QPixmap(self.current_frame_file)
 		self.main_image.setPixmap(self.current_frame)
 
@@ -202,7 +182,7 @@ class main_window(QWidget):
 		self.fps_manager.pause=False 
 
 	def disconnect_from_server(self):
-		pass # not yet implemented
+		self.fps_manager.pause=True
 
 	def quit(self):
 		self.fps_manager.stop=True # tell fps manager to terminate
@@ -211,7 +191,6 @@ class main_window(QWidget):
 
 	def closeEvent(self,e): # catch signal when user tries to exit by clicking window button
 		self.quit() # re-route to our quit function
-
 
 def main():
 	pyqt_app = QApplication(sys.argv) # need to pass something to QApplication constructor

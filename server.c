@@ -46,6 +46,8 @@ ready to be read from their socket.
 #include <arpa/inet.h>
 #include <sys/select.h> // I/O multiplexing
 
+#define BLK_SIZE 1024
+
 // simplifying function calls
 typedef struct sockaddr SA;
 typedef socklen_t SLT;
@@ -70,7 +72,7 @@ typedef union
     {
         uint16_t opcode; 
         uint16_t block_num; // 2 bytes 
-        uint8_t  data[512]; // remaining area
+        uint8_t  data[BLK_SIZE]; // remaining area
     } data_t;
 
     // opcode and 2 byte block number (ACK packet)
@@ -101,7 +103,7 @@ typedef struct
 	socklen_t* addrlen; 			// client info
 	int transfer_size; 				// size (bytes) of last transferred data
 	char filename[200]; 			// name of file being transferred
-	uint8_t cur_block[512]; 		// current block being transferred
+	uint8_t cur_block[BLK_SIZE]; 		// current block being transferred
 	int block_attempts; 			// number of attempts to send current block
 } transfer_t;
 
@@ -347,7 +349,7 @@ void resume_transfer(int t)
 				ack_legit = 1;
 
 				// check if this was the last transfer
-				if (transfers[t].transfer_size<512)
+				if (transfers[t].transfer_size<BLK_SIZE)
 				{
 					// prep string to hold ip address
 					char ip_address[128];
@@ -408,9 +410,9 @@ void resume_transfer(int t)
 		int next_block_num = last_block_num+1;
 		transfers[t].block_num = next_block_num;
 
-		uint8_t buf[512];
+		uint8_t buf[BLK_SIZE];
 
-		int n = fread(buf,1,512,transfers[t].fp);
+		int n = fread(buf,1,BLK_SIZE,transfers[t].fp);
 
 		if (n<0)
 		{
@@ -478,8 +480,8 @@ int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* a
 	uint16_t block_num = 1;
 	transfers[t].block_num = block_num;
 
-	uint8_t buf[512];
-	int n = fread(buf,1,512,transfers[t].fp);
+	uint8_t *buf = malloc(sizeof(uint8_t)*BLK_SIZE);
+	int n = fread(buf,1,BLK_SIZE,transfers[t].fp);
 	if (n<0)
 	{
 		printf("ERROR: Could not read from file.\n");
