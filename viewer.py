@@ -36,6 +36,7 @@ class frame_manager(QThread): # handles updating the gui
 			if self.stop: 
 				break 
 
+			start_time=time.time()
 			client = tftpy.TftpClient(self.ip_address,self.port_num)
 			try:
 				image_file = "client_frame_buffer/frame.png"
@@ -44,6 +45,7 @@ class frame_manager(QThread): # handles updating the gui
 				self.update_gui.emit()
 			except:
 				num_transmission_errors+=1
+			print("Transfer time: %0.4f"%(time.time()-start_time))
 			time.sleep(self.refresh_after)
 
 class ip_window(QWidget):
@@ -151,8 +153,8 @@ class main_window(QWidget):
 		file_menu.addAction("Quit",self.quit,QKeySequence("Ctrl+Q"))
 
 		connection_menu = toolbar.addMenu("Connection")
-		connection_menu.addAction("Connect...",self.connect_to_server)
-		connection_menu.addAction("Disconnect",self.disconnect_from_server)
+		connection_menu.addAction("Connect...",self.connect_to_server,QKeySequence("Ctrl+C"))
+		connection_menu.addAction("Disconnect",self.disconnect_from_server,QKeySequence("Ctrl+D"))
 
 		self.resize(self.min_width,self.min_height) # resize window
 		self.show()
