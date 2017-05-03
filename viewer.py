@@ -44,7 +44,7 @@ class frame_manager(QThread): # handles updating the gui
 			client = tftpy.TftpClient(self.ip_address,self.port_num)
 			try:
 				image_file = "client_frame_buffer/frame.png"
-				client.download("server_frame_buffer/"+filename,"client_frame_buffer/"+filename)
+				client.download("server_frame_buffer/"+filename,"client_frame_buffer/"+filename,timeout=MAX_WAIT_TIME)
 				self.parent.current_frame_file="client_frame_buffer/"+filename
 				self.update_gui.emit()
 			except:
