@@ -16,25 +16,6 @@ import tftpy
 DEFAULT_PORT_NUM=15213
 MAX_WAIT_TIME=5
 
-class frame_getter(QThread):
-
-	def __init__(self,parent,ip_address,port_num=DEFAULT_PORT_NUM,filename="frame.png"):
-		QThread.__init__(self,parent.parent)
-		self.parent=parent
-		self.ip_address=ip_address
-		self.port_num=port_num
-		self.filename=filename
-
-	def run(self):
-		filename=self.filename
-		client = tftpy.TftpClient(self.ip_address,self.port_num)
-		try:
-			image_file = "client_frame_buffer/frame.png"
-			client.download("server_frame_buffer/"+filename,"client_frame_buffer/"+filename)
-			self.parent.got_frame=True
-		except:
-			self.parent.error=True
-
 class frame_manager(QThread): # handles updating the gui
 	update_gui = pyqtSignal()
 
@@ -58,29 +39,7 @@ class frame_manager(QThread): # handles updating the gui
 			if self.stop: 
 				break 
 
-			#f_getter = frame_getter(self,self.ip_address,self.port_num)
-			#self.got_frame=False 
-			#self.error=False
-			#f_getter.start()
-
 			start_time=time.time()
-			
-			'''
-			while True:
-				if self.error:
-					num_transmission_errors+=1
-					break
-
-				if self.got_frame:
-					self.parent.current_frame_file = image_file
-					self.update_gui.emit()
-					break
-
-				if (time.time()-start_time)>MAX_WAIT_TIME:
-					print("Transfer timed out.")
-					break
-			'''
-
 			filename="frame.png"
 			client = tftpy.TftpClient(self.ip_address,self.port_num)
 			try:
