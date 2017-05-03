@@ -46,7 +46,7 @@ ready to be read from their socket.
 #include <arpa/inet.h>
 #include <sys/select.h> // I/O multiplexing
 
-#define BLK_SIZE 2000
+#define BLK_SIZE 512
 
 // simplifying function calls
 typedef struct sockaddr SA;
@@ -446,6 +446,18 @@ int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* a
 	int t = -1;
 	int cli_sock = -1; // initialize variables
 
+	// open the file differently depending on the specified encoding
+	FILE *file_ptr;
+	if (strcasecmp(enc_mode,"netascii")==0) {  file_ptr = fopen(filename,"r");  }
+	else 									{  file_ptr = fopen(filename,"rb"); }
+
+	// check if the file pointer is valid
+	if (file_ptr==NULL)
+	{
+		printf("ERROR: Could not open file.\n");
+		goto CLEANUP;
+	}
+
 	// create socket connection to client to be used for transfer 
 	cli_sock = socket(AF_INET,SOCK_DGRAM,0);
 	if (cli_sock<0)
@@ -464,11 +476,6 @@ int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* a
 		printf("ERROR: Could not set socket options.\n");  
 		goto CLEANUP;
 	}
-
-	// open the file differently depending on the specified encoding
-	FILE *file_ptr;
-	if (strcasecmp(enc_mode,"netascii")==0) {  file_ptr = fopen(filename,"r");  }
-	else 									{  file_ptr = fopen(filename,"rb"); }
 
 	// try to occupy a transfer bay (index) in the list of 100 transfers
 	t = open_transfer(cli_sock,file_ptr,client_addr,addrlen,filename);

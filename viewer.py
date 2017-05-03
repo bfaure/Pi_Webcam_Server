@@ -13,17 +13,25 @@ from socket import *
 # tftp library
 import tftpy
 
+
 DEFAULT_PORT_NUM=15214
-MAX_WAIT_TIME=15
-DEF_BLK_SIZE=2000
+MAX_WAIT_TIME=0.5
+DEFAULT_BLK_SIZE=2000
+
+FRAME_FILE="frame.png"
+
+CLIENT_DIR = "client_frame_buffer"
+SERVER_DIR = "server_frame_buffer"
+
+REFRESH_AFTER = 0.1
+
 
 class frame_manager(QThread): # handles updating the gui
 	update_gui = pyqtSignal()
 
-	def __init__(self,parent,refresh_after=0.1):
+	def __init__(self,parent):
 		QThread.__init__(self,parent)
 		self.parent=parent
-		self.refresh_after=refresh_after
 		self.ip_address="localhost" # default 
 		self.port_num=DEFAULT_PORT_NUM
 		self.stop=False
@@ -32,29 +40,25 @@ class frame_manager(QThread): # handles updating the gui
 
 	def run(self): # send update signal to gui window periodically
 		num_transmission_errors=0
-		dest_file = "client_frame_buffer/frame2.png"
-		req_file = "server_frame_buffer/image.png"
 
 		while True:
 			while self.pause:
-				time.sleep(0.5)
-			if self.stop: 
-				break 
+				time.sleep(0.2)
+
+			if self.stop: break # if told to stop
 
 			start_time=time.time()
-			client = tftpy.TftpClient(self.ip_address,self.port_num)#,options={'blksize':DEF_BLK_SIZE})
+			client = tftpy.TftpClient(self.ip_address,self.port_num,options={'blksize':DEFAULT_BLK_SIZE})
 			try:
-				#client.download(req_file,dest_file,timeout=MAX_WAIT_TIME)
-				client.download(req_file,dest_file)
-				self.parent.current_frame_file=dest_file
+				client.download(SERVER_DIR+"/"+FRAME_FILE,CLIENT_DIR+"/"+FRAME_FILE,timeout=MAX_WAIT_TIME)
+				self.parent.current_frame_file=CLIENT_DIR+"/"+FRAME_FILE
 				self.update_gui.emit()
 			except:
+				print("Transmission Error")
 				num_transmission_errors+=1
-				#client.download(req_file,dest_file)
-				self.update_gui.emit()
 
 			print("Transfer time: %0.4f"%(time.time()-start_time))
-			time.sleep(self.refresh_after)
+			time.sleep(REFRESH_AFTER)
 
 class ip_window(QWidget):
 	got_ip = pyqtSignal()
@@ -151,8 +155,15 @@ class main_window(QWidget):
 		self.min_height=600
 
 		self.window_layout = QVBoxLayout(self) # control layout of widgets on window
+
 		self.main_image = QLabel() # will push image stream to this widget 
-		self.window_layout.addWidget(self.main_image) # add to layout
+
+		main_row = QHBoxLayout()
+		main_row.addStretch()
+		main_row.addWidget(self.main_image)
+		main_row.addStretch()
+		self.window_layout.addLayout(main_row)
+		#self.window_layout.addWidget(self.main_image) # add to layout
 
 		toolbar = QMenuBar(self) # top menu bar
 		toolbar.setFixedWidth(self.min_width)
@@ -163,6 +174,8 @@ class main_window(QWidget):
 		connection_menu = toolbar.addMenu("Connection")
 		connection_menu.addAction("Connect...",self.connect_to_server,QKeySequence("Ctrl+C"))
 		connection_menu.addAction("Disconnect",self.disconnect_from_server,QKeySequence("Ctrl+D"))
+		connection_menu.addSeparator()
+		connection_menu.addAction("Refresh Rate...",self.set_refresh_rate,QKeySequence("Ctrl+R"))
 
 		self.resize(self.min_width,self.min_height) # resize window
 		self.show()
@@ -170,11 +183,20 @@ class main_window(QWidget):
 		self.fps_manager = frame_manager(self) # separate thread to handle updating window
 		self.fps_manager.start() # start manager thread
 
+	def set_refresh_rate(self):
+		global REFRESH_AFTER
+		input_rate,ok = QInputDialog.getText(self,"Change Refresh Rate","Enter wait time (seconds): ")
+		if ok: REFRESH_AFTER = float(input_rate)
+
 	def update_frame(self):
 		if self.current_frame_file==None: return # skip if we dont have a frame
 		print("Loading new frame")
-		self.current_frame = QPixmap(self.current_frame_file)
-		self.main_image.setPixmap(self.current_frame)
+		try:
+			self.current_frame = QPixmap(self.current_frame_file)
+			self.current_frame = self.current_frame.scaled(555,520)
+			self.main_image.setPixmap(self.current_frame)
+		except:
+			print("Could not load new frame")
 
 	def got_ip(self):
 		self.ip_dialog_window.hide()
