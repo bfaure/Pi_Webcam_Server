@@ -13,13 +13,14 @@ from socket import *
 # tftp library
 import tftpy
 
-DEFAULT_PORT_NUM=15213
-MAX_WAIT_TIME=5
+DEFAULT_PORT_NUM=15214
+MAX_WAIT_TIME=15
+DEF_BLK_SIZE=2000
 
 class frame_manager(QThread): # handles updating the gui
 	update_gui = pyqtSignal()
 
-	def __init__(self,parent,refresh_after=5):
+	def __init__(self,parent,refresh_after=0.1):
 		QThread.__init__(self,parent)
 		self.parent=parent
 		self.refresh_after=refresh_after
@@ -31,7 +32,8 @@ class frame_manager(QThread): # handles updating the gui
 
 	def run(self): # send update signal to gui window periodically
 		num_transmission_errors=0
-		image_file = "client_frame_buffer/frame.png"
+		dest_file = "client_frame_buffer/frame2.png"
+		req_file = "server_frame_buffer/image.png"
 
 		while True:
 			while self.pause:
@@ -40,15 +42,16 @@ class frame_manager(QThread): # handles updating the gui
 				break 
 
 			start_time=time.time()
-			filename="frame.png"
-			client = tftpy.TftpClient(self.ip_address,self.port_num)
+			client = tftpy.TftpClient(self.ip_address,self.port_num)#,options={'blksize':DEF_BLK_SIZE})
 			try:
-				image_file = "client_frame_buffer/frame.png"
-				client.download("server_frame_buffer/"+filename,"client_frame_buffer/"+filename,timeout=MAX_WAIT_TIME)
-				self.parent.current_frame_file="client_frame_buffer/"+filename
+				#client.download(req_file,dest_file,timeout=MAX_WAIT_TIME)
+				client.download(req_file,dest_file)
+				self.parent.current_frame_file=dest_file
 				self.update_gui.emit()
 			except:
 				num_transmission_errors+=1
+				#client.download(req_file,dest_file)
+				self.update_gui.emit()
 
 			print("Transfer time: %0.4f"%(time.time()-start_time))
 			time.sleep(self.refresh_after)
