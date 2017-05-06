@@ -14,7 +14,7 @@ from socket import *
 import tftpy
 
 
-DEFAULT_PORT_NUM=15214
+DEFAULT_PORT_NUM=15213
 MAX_WAIT_TIME=0.5
 DEFAULT_BLK_SIZE=2000
 
@@ -138,6 +138,18 @@ class ip_window(QWidget):
 	def closeEvent(self,e):
 		self.cancel_selected()
 
+class PicButton(QAbstractButton):
+	def __init__(self,pic_path,parent=None):
+		super(PicButton,self).__init__(parent)
+		self.pixmap = QPixmap(pic_path)
+
+	def paintEvent(self,event):
+		painter = QPainter(self)
+		painter.drawPixmap(event.rect(),self.pixmap)
+
+	def sizeHint(self):
+		return self.pixmap.size()
+
 class main_window(QWidget): 
 
 	def __init__(self):
@@ -148,6 +160,7 @@ class main_window(QWidget):
 
 	def init_vars(self):
 		self.current_frame_file=None 
+		self.ip=None 
 
 	def init_ui(self):
 
@@ -162,8 +175,40 @@ class main_window(QWidget):
 		main_row.addStretch()
 		main_row.addWidget(self.main_image)
 		main_row.addStretch()
-		self.window_layout.addLayout(main_row)
+		self.window_layout.addLayout(main_row,2)
 		#self.window_layout.addWidget(self.main_image) # add to layout
+
+		button_row = QHBoxLayout()
+
+		play_button = PicButton("resources/play_icon.png")
+		play_button.setFixedWidth(30)
+		play_button.setFixedHeight(30)
+		play_button.clicked.connect(self.play_button_pressed)
+
+		stop_button = PicButton("resources/stop_icon.png")
+		stop_button.setFixedHeight(30)
+		stop_button.setFixedWidth(30)
+		stop_button.clicked.connect(self.stop_button_pressed)
+
+		connect_button = PicButton("resources/connect_icon.png")
+		connect_button.setFixedWidth(30)
+		connect_button.setFixedHeight(30)
+		connect_button.clicked.connect(self.connect_button_pressed)
+
+		pause_button = PicButton("resources/pause_icon.png")
+		pause_button.setFixedWidth(30)
+		pause_button.setFixedHeight(30)
+		pause_button.clicked.connect(self.pause_button_pressed)
+
+		button_row.addStretch()
+		button_row.addWidget(pause_button)
+		button_row.addWidget(play_button)
+		button_row.addWidget(stop_button)
+		button_row.addSpacing(100)
+		button_row.addWidget(connect_button)
+		button_row.addStretch()
+
+		self.window_layout.addLayout(button_row)
 
 		toolbar = QMenuBar(self) # top menu bar
 		toolbar.setFixedWidth(self.min_width)
@@ -182,6 +227,19 @@ class main_window(QWidget):
 
 		self.fps_manager = frame_manager(self) # separate thread to handle updating window
 		self.fps_manager.start() # start manager thread
+
+	def stop_button_pressed(self):
+		self.ip=None
+
+	def pause_button_pressed(self):
+		self.fps_manager.pause=True 
+
+	def connect_button_pressed(self):
+		self.connect_to_server()
+
+	def play_button_pressed(self):
+		if self.ip!=None: self.fps_manager.pause=False
+		else: self.connect_to_server()
 
 	def set_refresh_rate(self):
 		global REFRESH_AFTER
@@ -204,6 +262,7 @@ class main_window(QWidget):
 		self.connect_to_server(ip=self.ip_dialog_window.full_ip)
 
 	def connect_to_server(self,ip=None):
+		self.ip=ip
 		if ip==None:
 			self.hide()
 			self.ip_dialog_window.show()
