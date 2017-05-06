@@ -164,6 +164,8 @@ class main_window(QWidget):
 
 	def init_ui(self):
 
+		self.setWindowTitle("Not Connected")
+
 		self.min_width=600
 		self.min_height=600
 
@@ -229,7 +231,7 @@ class main_window(QWidget):
 		self.fps_manager.start() # start manager thread
 
 	def stop_button_pressed(self):
-		self.ip=None
+		self.disconnect_from_server()
 
 	def pause_button_pressed(self):
 		self.fps_manager.pause=True 
@@ -271,9 +273,12 @@ class main_window(QWidget):
 		self.fps_manager.ip_address=ip
 		self.fps_manager.port_num=DEFAULT_PORT_NUM
 		self.fps_manager.pause=False 
+		self.setWindowTitle("Connected to %s"%ip)
 
 	def disconnect_from_server(self):
 		self.fps_manager.pause=True
+		self.ip=None 
+		self.setWindowTitle("Not Connected")
 
 	def quit(self):
 		self.fps_manager.stop=True # tell fps manager to terminate
