@@ -105,6 +105,7 @@ typedef struct
 	char filename[200]; 			// name of file being transferred
 	uint8_t cur_block[BLK_SIZE]; 		// current block being transferred
 	int block_attempts; 			// number of attempts to send current block
+	int blksize; 					// transfer block size, default is 512
 } transfer_t;
 
 fd_set read_fds;           // used to maintain opened sockets for I/O multiplexing
@@ -647,6 +648,17 @@ void handle_request(packet_t *recv_packet, struct sockaddr_in* client_addr, sock
 	// write into filename and mode strings 
 	filename = (char*)recv_packet->req_t.req_instr;
 	mode = (char*)(recv_packet->req_t.req_instr+strlen(filename)+1);
+
+	// string to hold characters after the mode, check for blksize specification
+	char *blksize_spec = malloc(sizeof(char)*100);
+	blksize_spec = (char*)(recv_packet->req_t.req_instr+strlen(filename)+1+strlen(mode)+1);
+
+	// check if a blksize is specified
+	if (strcasecmp(blksize_spec,"blksize")>0)
+	{
+		printf("Block size was specified.\n");
+	}
+
 
 	// prep string to hold ip address
 	char ip_address[128];
