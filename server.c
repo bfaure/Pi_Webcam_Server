@@ -520,7 +520,9 @@ int open_listening_socket(int port)
 {
 	int sockfd = socket(AF_INET,SOCK_DGRAM,0); // create socket file descriptor
 	if (sockfd<0){  return -1;  } 			   // check for error
-	
+	int optval = 1;
+
+	setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR,(const void*)&optval, sizeof(int)){ return -1}	// allow user to reuse same port
 	struct sockaddr_in serveraddr; // configure specs
     bzero((char *) &serveraddr, sizeof(serveraddr));
     serveraddr.sin_family = AF_INET; 
