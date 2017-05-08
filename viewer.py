@@ -15,7 +15,7 @@ import tftpy
 
 
 DEFAULT_PORT_NUM=15213
-MAX_WAIT_TIME=0.2
+MAX_WAIT_TIME=0.1
 DEFAULT_BLK_SIZE=8000
 
 FRAME_FILE="frame.png"
@@ -140,6 +140,7 @@ class ip_window(QWidget):
 	def closeEvent(self,e):
 		self.cancel_selected()
 
+# Widget class for buttons with pictures
 class PicButton(QAbstractButton):
 	def __init__(self,pic_path,parent=None):
 		super(PicButton,self).__init__(parent)
@@ -152,8 +153,8 @@ class PicButton(QAbstractButton):
 	def sizeHint(self):
 		return self.pixmap.size()
 
+# Main GUI class
 class main_window(QWidget): 
-
 	def __init__(self):
 		super(main_window,self).__init__() 
 		self.ip_dialog_window = ip_window(self)
@@ -161,8 +162,8 @@ class main_window(QWidget):
 		self.init_ui()
 
 	def init_vars(self):
-		self.current_frame_file=None 
-		self.ip=None 
+		self.current_frame_file=None # path to current frame
+		self.ip=None # string ip address (xxx.xxx.xxx.xxx)
 
 	def init_ui(self):
 
@@ -180,7 +181,6 @@ class main_window(QWidget):
 		main_row.addWidget(self.main_image)
 		main_row.addStretch()
 		self.window_layout.addLayout(main_row,2)
-		#self.window_layout.addWidget(self.main_image) # add to layout
 
 		button_row = QHBoxLayout()
 

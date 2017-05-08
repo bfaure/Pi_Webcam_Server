@@ -524,6 +524,7 @@ int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* a
 	return 1;
 
 	CLEANUP:
+	send_error_packet(0,"Not Yet Implemented",client_addr,addrlen);
 	close(cli_sock);
 	close_transfer(t);
 	return -1;
