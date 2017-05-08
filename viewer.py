@@ -79,7 +79,7 @@ class ip_window(QWidget):
 	def init_ui(self):
 		self.setWindowTitle("IP Address Input")
 		self.layout = QVBoxLayout(self)
-		self.top_label = QLabel("Enter IP Address of other user:")
+		self.top_label = QLabel("Enter IP Address of Server:")
 		self.layout.addWidget(self.top_label)
 
 		ip_row = QHBoxLayout()
