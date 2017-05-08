@@ -41,12 +41,13 @@ class frame_manager(QThread): # handles updating the gui
 		num_transmission_errors=0
 
 		while True:
-			while self.pause:
+			while self.pause: # if pausing, or not yet initialized
 				time.sleep(0.2)
 
 			if self.stop: break # if told to stop
 
 			start_time=time.time()
+			
 			client = tftpy.TftpClient(self.ip_address,self.port_num,options={'blksize':DEFAULT_BLK_SIZE})
 			try:
 				client.download(SERVER_DIR+"/"+FRAME_FILE,CLIENT_DIR+"/"+FRAME_FILE,timeout=MAX_WAIT_TIME)
