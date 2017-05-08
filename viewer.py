@@ -25,17 +25,18 @@ SERVER_DIR = "server_frame_buffer"
 
 REFRESH_AFTER = 0.1
 
-class frame_manager(QThread): # handles updating the gui
-	update_gui = pyqtSignal()
+# Class runs in a separate thread from the main thread, requests frame.png from server
+class frame_manager(QThread): 
+	update_gui = pyqtSignal() # signal used to update the main GUI window
 
-	def __init__(self,parent):
+	def __init__(self,parent): # parent is the main GUI window
 		QThread.__init__(self,parent)
-		self.parent=parent
+		self.parent=parent # save the GUI window as parent
 		self.ip_address="localhost" # default 
-		self.port_num=DEFAULT_PORT_NUM
-		self.stop=False
-		self.pause=True 
-		self.connect(self,SIGNAL("update_gui()"),parent.update_frame)
+		self.port_num=DEFAULT_PORT_NUM # set to 15213
+		self.stop=False # dont quit automatically
+		self.pause=True # dont start requesting until told to do so
+		self.connect(self,SIGNAL("update_gui()"),parent.update_frame) # connect update_gui to GUI window function 'update_frame'
 
 	def run(self): # send update signal to gui window periodically
 		num_transmission_errors=0
@@ -43,23 +44,24 @@ class frame_manager(QThread): # handles updating the gui
 		while True:
 			while self.pause: # if pausing, or not yet initialized
 				time.sleep(0.2)
-
 			if self.stop: break # if told to stop
-
 			start_time=time.time()
-			
+			# create client object for transfer
 			client = tftpy.TftpClient(self.ip_address,self.port_num,options={'blksize':DEFAULT_BLK_SIZE})
 			try:
+				# try to download 'server_frame_buffer/frame.png' from server
 				client.download(SERVER_DIR+"/"+FRAME_FILE,CLIENT_DIR+"/"+FRAME_FILE,timeout=MAX_WAIT_TIME)
+				# set the path to the new frame in the parent
 				self.parent.current_frame_file=CLIENT_DIR+"/"+FRAME_FILE
+				# tell the parent to update with the new frame
 				self.update_gui.emit()
 			except:
 				print("Transmission Error")
 				num_transmission_errors+=1
-
 			print("Transfer time: %0.4f"%(time.time()-start_time))
 			time.sleep(REFRESH_AFTER)
 
+# window that pops up allowing user to enter IP address
 class ip_window(QWidget):
 	got_ip = pyqtSignal()
 
