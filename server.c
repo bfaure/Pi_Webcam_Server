@@ -46,7 +46,7 @@ ready to be read from their socket.
 #include <arpa/inet.h>
 #include <sys/select.h> // I/O multiplexing
 
-#define BLK_SIZE 8192
+#define BLK_SIZE 8000
 #define MAX_TRANSFERS 500
 
 // simplifying function calls
