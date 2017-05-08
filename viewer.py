@@ -15,8 +15,8 @@ import tftpy
 
 
 DEFAULT_PORT_NUM=15213
-MAX_WAIT_TIME=0.5
-DEFAULT_BLK_SIZE=2000
+MAX_WAIT_TIME=0.2
+DEFAULT_BLK_SIZE=8192
 
 FRAME_FILE="frame.png"
 
@@ -24,7 +24,6 @@ CLIENT_DIR = "client_frame_buffer"
 SERVER_DIR = "server_frame_buffer"
 
 REFRESH_AFTER = 0.1
-
 
 class frame_manager(QThread): # handles updating the gui
 	update_gui = pyqtSignal()
