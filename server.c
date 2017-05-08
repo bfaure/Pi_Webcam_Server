@@ -47,6 +47,7 @@ ready to be read from their socket.
 #include <sys/select.h> // I/O multiplexing
 
 #define BLK_SIZE 8192
+#define MAX_TRANSFERS 500
 
 // simplifying function calls
 typedef struct sockaddr SA;
@@ -116,12 +117,12 @@ typedef struct
 } transfer_t;
 
 fd_set read_fds;           // used to maintain opened sockets for I/O multiplexing
-transfer_t transfers[100]; // holds open transfer information (1 active per open socket)
+transfer_t transfers[MAX_TRANSFERS]; // holds open transfer information (1 active per open socket)
 
 // Evicts the connection at index 't' of the transfers list
 void close_transfer(int t);
 
-// Initializes all 100 spots in the transfers array to open
+// Initializes all MAX_TRANSFERS spots in the transfers array to open
 void init_transfers();
 
 // Gets an index in the transfers array where the corresponding elements socket is ready to be read
@@ -202,7 +203,7 @@ int main(int argc, char ** argv)
 		// FD_SET the listening socket
 		FD_SET(l_sock,&read_fds);
 		// FD_SET all active socket fds
-		for (int i=0; i<100; i++){ if (transfers[i].active){ FD_SET(transfers[i].socket_fd,&read_fds);}}
+		for (int i=0; i<MAX_TRANSFERS; i++){ if (transfers[i].active){ FD_SET(transfers[i].socket_fd,&read_fds);}}
 		
 		// get the maximum file descriptor
 		nfds = max_transfer_fd();
@@ -275,7 +276,7 @@ void close_transfer(int t)
 
 void init_transfers()
 {
-	for (int i=0; i<100; i++)
+	for (int i=0; i<MAX_TRANSFERS; i++)
 	{
 		close_transfer(i);
 	}
@@ -283,7 +284,7 @@ void init_transfers()
 
 int get_ready_transfer()
 {
-	for (int i=0; i<100; i++)
+	for (int i=0; i<MAX_TRANSFERS; i++)
 	{
 		if (transfers[i].active && FD_ISSET(transfers[i].socket_fd,&read_fds))
 		{
@@ -297,7 +298,7 @@ int get_ready_transfer()
 int max_transfer_fd()
 {
 	int max_fd = -1;
-	for (int i=0; i<100; i++)
+	for (int i=0; i<MAX_TRANSFERS; i++)
 	{
 		if (transfers[i].active && (transfers[i].socket_fd>max_fd))
 		{
@@ -310,7 +311,7 @@ int max_transfer_fd()
 int open_transfer(int socket_fd, FILE* fp, struct sockaddr_in* client_addr, socklen_t* addrlen, char* filename)
 {
 	// iterate over all possible slots in which to place the new client
-	for (int i=0; i<100; i++)
+	for (int i=0; i<MAX_TRANSFERS; i++)
 	{
 		// if this slot is open
 		if (transfers[i].active==0)
@@ -487,7 +488,7 @@ int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* a
 		}
 	}
 
-	// try to occupy a transfer bay (index) in the list of 100 transfers
+	// try to occupy a transfer bay (index) in the list of MAX_TRANSFERS transfers
 	t = open_transfer(cli_sock,file_ptr,client_addr,addrlen,filename);
 	if (t==-1)
 	{  
