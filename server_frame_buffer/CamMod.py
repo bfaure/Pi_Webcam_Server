@@ -14,12 +14,12 @@ import os
 
 '''
 with picamera.PiCamera() as Camera:
-	sleep(2)
-	Camera.resolution = (500,500)
+	sleep(1)
+	Camera.resolution = (100,100)
 	for filename in Camera.capture_continuous('image2.png'):
                 
-                if os.path.isfile("image.png"): os.remove("image.png")
-                sleep(0.5)
-                copy("image2.png","image.png")
+                if os.path.isfile("image.png"): os.remove("frame.png")
+                ##sleep(0.05)
+                copy("image2.png","frame.png")
 		print('Capture %s' % filename)
-		sleep(1)
+		'''sleep(0.03)'''
