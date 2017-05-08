@@ -46,7 +46,7 @@ ready to be read from their socket.
 #include <arpa/inet.h>
 #include <sys/select.h> // I/O multiplexing
 
-#define BLK_SIZE 512
+#define BLK_SIZE 8192
 
 // simplifying function calls
 typedef struct sockaddr SA;
@@ -59,6 +59,13 @@ typedef union
 {
 	// just opcode in packet  
     uint16_t opcode; 
+
+    // OACK packet
+    struct 
+    {
+    	uint16_t opcode;
+    	uint8_t oack_details[514]; // "blksize", 1 null byte, ASCII blocksize integer, 1 null byte
+    } oack_t;
 
     // opcode and remaining data (RRQ/WRQ packet)
     struct 
@@ -103,9 +110,9 @@ typedef struct
 	socklen_t* addrlen; 			// client info
 	int transfer_size; 				// size (bytes) of last transferred data
 	char filename[200]; 			// name of file being transferred
-	uint8_t cur_block[BLK_SIZE]; 		// current block being transferred
+	uint8_t cur_block[BLK_SIZE]; 	// current block being transferred
 	int block_attempts; 			// number of attempts to send current block
-	int blksize; 					// transfer block size, default is 512
+	uint8_t blksize; 				// transfer block size, default is 512
 } transfer_t;
 
 fd_set read_fds;           // used to maintain opened sockets for I/O multiplexing
@@ -133,7 +140,7 @@ int open_transfer(int socket_fd, FILE* fp, struct sockaddr_in* client_addr, sock
 void resume_transfer(int t);
 
 // Sends the first 512 byte block of data to client
-int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* addrlen, char* enc_mode);
+int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* addrlen, char* enc_mode, int cli_sock);
 
 // Creates a UDP-ready socket at the specified port number, returns -1 on error
 int open_listening_socket(int port);
@@ -442,10 +449,9 @@ void resume_transfer(int t)
 	close_transfer(t); // de-activate the transfer slot
 }
 
-int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* addrlen, char* enc_mode)
+int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* addrlen, char* enc_mode, int cli_sock)
 {
 	int t = -1;
-	int cli_sock = -1; // initialize variables
 
 	// open the file differently depending on the specified encoding
 	FILE *file_ptr;
@@ -459,23 +465,26 @@ int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* a
 		goto CLEANUP;
 	}
 
-	// create socket connection to client to be used for transfer 
-	cli_sock = socket(AF_INET,SOCK_DGRAM,0);
-	if (cli_sock<0)
-	{  
-		printf("ERROR: Could not open transfer socket.\n");  
-		goto CLEANUP;
-	}
+	if (cli_sock==-1)
+	{
+		// create socket connection to client to be used for transfer 
+		cli_sock = socket(AF_INET,SOCK_DGRAM,0);
+		if (cli_sock<0)
+		{  
+			printf("ERROR: Could not open transfer socket.\n");  
+			goto CLEANUP;
+		}
 
-	// set the socket options 
-	struct timeval tv;
-	tv.tv_sec = 5;
-	tv.tv_usec = 0;
-	int did_set = setsockopt(cli_sock,SOL_SOCKET,SO_RCVTIMEO,&tv,sizeof(tv));
-	if (did_set<0)
-	{  
-		printf("ERROR: Could not set socket options.\n");  
-		goto CLEANUP;
+		// set the socket options 
+		struct timeval tv;
+		tv.tv_sec = 5;
+		tv.tv_usec = 0;
+		int did_set = setsockopt(cli_sock,SOL_SOCKET,SO_RCVTIMEO,&tv,sizeof(tv));
+		if (did_set<0)
+		{  
+			printf("ERROR: Could not set socket options.\n");  
+			goto CLEANUP;
+		}
 	}
 
 	// try to occupy a transfer bay (index) in the list of 100 transfers
@@ -500,6 +509,8 @@ int start_transfer(char *filename, struct sockaddr_in* client_addr, socklen_t* a
 	// send this block
 	send_data_packet(transfers[t].socket_fd,block_num,n,buf,
 		transfers[t].client_addr,transfers[t].addrlen);
+
+	//printf("Sent first block to client\n");
 
 	// let ourselves know that this was the final block of the transfer
 	transfers[t].transfer_size = n;
@@ -533,6 +544,59 @@ int open_listening_socket(int port)
 	int bindok = bind(sockfd,(SA*)&serveraddr,sizeof(serveraddr));
 	if (bindok<0){  return -1;  }
 	return sockfd;
+}
+
+int send_oack_packet(char* opt, char* opt_val, struct sockaddr_in* client_addr, socklen_t* addrlen)
+{
+	packet_t resp; // create packet to hold oack
+	resp.opcode = htons(6); // opcode for OACK packets
+
+	int p_i = 0; // packet byte index 
+	for (int i=0; i<strlen(opt); i++)
+	{
+		resp.oack_t.oack_details[p_i] = (uint8_t)opt[i];
+		p_i++;
+	}
+	// null-terminate the opt
+	resp.oack_t.oack_details[p_i] = 0;
+	p_i++;
+
+	for (int i=0; i<strlen(opt_val); i++)
+	{
+		resp.oack_t.oack_details[p_i] = (uint8_t)opt_val[i];
+		p_i++;
+	}
+	// null-terminate the opt_val
+	resp.oack_t.oack_details[p_i] = 0;
+
+	//printf("oack_details: %s %s\n",(char*)resp.oack_t.oack_details,(char*)resp.oack_t.oack_details+8);
+
+	// now need to open socket to connect back to client 
+	int cli_sock = socket(AF_INET,SOCK_DGRAM,0);
+	if (cli_sock<0){  printf("ERROR: Could not create client socket.\n");  }
+
+	// creating struct to hold socket timeout options
+	struct timeval tv;
+	tv.tv_sec = 5; // 5 seconds
+	tv.tv_usec = 0;
+
+	// set the socket timeout
+	int did_set = setsockopt(cli_sock,SOL_SOCKET,SO_RCVTIMEO,&tv,sizeof(tv));
+	if (did_set<0){  printf("ERROR: Could not set socket options.\n");  }
+
+	// send the OACK response back to client
+	int did_send = sendto(cli_sock,&resp,p_i+3,0,(SA*)client_addr,*addrlen);
+	if (did_send<0){  printf("ERROR: Could not send OACK message to client.\n");  }
+
+	packet_t ack;
+
+	// wait for the ACK response to the OACK packet
+	get_client_resp(cli_sock,&ack,client_addr,addrlen);
+
+	//printf("Got client response to OACK, opcode=%d\n",ntohs(ack.opcode));
+	// close the client socket connection 
+	//close(cli_sock);
+	return cli_sock;
 }
 
 void send_error_packet(int err_num, char* err_msg, struct sockaddr_in* client_addr, socklen_t* addrlen)
@@ -653,12 +717,22 @@ void handle_request(packet_t *recv_packet, struct sockaddr_in* client_addr, sock
 	char *blksize_spec = malloc(sizeof(char)*100);
 	blksize_spec = (char*)(recv_packet->req_t.req_instr+strlen(filename)+1+strlen(mode)+1);
 
-	// check if a blksize is specified
-	if (strcasecmp(blksize_spec,"blksize")>0)
-	{
-		printf("Block size was specified.\n");
-	}
+	// set to default blocksize of 512
+	int blocksize = BLK_SIZE;
 
+	// set to -1 default if not using an OACK
+	int cli_sock = -1;
+
+	// check if a blksize is specified
+	if (strcasecmp(blksize_spec,"blksize")>=0)
+	{
+		char *blksize = malloc(sizeof(char)*100);
+		blksize = (char*)(recv_packet->req_t.req_instr+strlen(filename)+1+strlen(mode)+1+strlen(blksize_spec)+1);
+		//printf("Requested block size: %s\n",blksize);
+		blocksize = atoi(blksize);
+		cli_sock = send_oack_packet(blksize_spec,blksize,client_addr,addrlen);
+		//printf("Using cli_sock: %d\n",cli_sock);
+	}
 
 	// prep string to hold ip address
 	char ip_address[128];
@@ -697,7 +771,7 @@ void handle_request(packet_t *recv_packet, struct sockaddr_in* client_addr, sock
 		}
 
 		// proceed to begin copying the file back to the client
-		start_transfer(filename,client_addr,addrlen,mode);
+		start_transfer(filename,client_addr,addrlen,mode,cli_sock);
 	}
 
 	// if the request is WRQ
