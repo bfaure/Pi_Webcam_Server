@@ -724,17 +724,6 @@ void handle_request(packet_t *recv_packet, struct sockaddr_in* client_addr, sock
 	// set to -1 default if not using an OACK
 	int cli_sock = -1;
 
-	// check if a blksize is specified
-	if (strcasecmp(blksize_spec,"blksize")>=0)
-	{
-		char *blksize = malloc(sizeof(char)*100);
-		blksize = (char*)(recv_packet->req_t.req_instr+strlen(filename)+1+strlen(mode)+1+strlen(blksize_spec)+1);
-		//printf("Requested block size: %s\n",blksize);
-		blocksize = atoi(blksize);
-		cli_sock = send_oack_packet(blksize_spec,blksize,client_addr,addrlen);
-		//printf("Using cli_sock: %d\n",cli_sock);
-	}
-
 	// prep string to hold ip address
 	char ip_address[128];
 	inet_ntop(AF_INET, &(client_addr->sin_addr), ip_address, 128);
@@ -769,6 +758,15 @@ void handle_request(packet_t *recv_packet, struct sockaddr_in* client_addr, sock
 			send_error_packet(2,"Not Allowed",client_addr,addrlen);
 			printf("Client denied access to \'%s\'\n",filename);
 			return;	
+		}
+
+		// check if a blksize is specified
+		if (strcasecmp(blksize_spec,"blksize")>=0)
+		{
+			char *blksize = malloc(sizeof(char)*100);
+			blksize = (char*)(recv_packet->req_t.req_instr+strlen(filename)+1+strlen(mode)+1+strlen(blksize_spec)+1);
+			blocksize = atoi(blksize);
+			cli_sock = send_oack_packet(blksize_spec,blksize,client_addr,addrlen);
 		}
 
 		// proceed to begin copying the file back to the client
